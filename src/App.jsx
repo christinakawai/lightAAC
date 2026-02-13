@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
+import { BOARD_LAYOUT } from './utils/boardLayout'
 
 function App() {
   const videoRef = useRef(null)
@@ -6,6 +7,15 @@ function App() {
   const canvasRef = useRef(null)
   const [cameraOn, setCameraOn] = useState(false)
   const [spot, setSpot] = useState(null)
+  const [corners, setCorners] = useState([])
+  const [screen, setScreen] = useState('camera') // 'camera' | 'calibration' | 'detection'
+
+  const CORNER_NAMES = [
+    'Top-Left corner',
+    'Top-Right corner',
+    'Bottom-Left corner',
+    'Bottom-Right corner'
+  ]
 
   const startCamera = async () => {
     try {
@@ -15,6 +25,7 @@ function App() {
       videoRef.current.srcObject = stream
       streamRef.current = stream
       setCameraOn(true)
+      setScreen('calibration')
     } catch(err) {
       alert(err.message)
     }
@@ -26,6 +37,8 @@ function App() {
       videoRef.current.srcObject = null
       setCameraOn(false)
       setSpot(null)
+      setCorners([])
+      setScreen('camera')
     } catch(err) {
       alert(err.message)
     }
@@ -67,14 +80,7 @@ function App() {
         const g = data[i + 1]
         const b = data[i + 2]
 
-        // Strong red only
-        const isStrongRed =
-          r > 180 &&          // must be bright red
-          g < 100 &&          // low green
-          b < 100 &&          // low blue
-          r - Math.max(g, b) > 80  // strong dominance
-
-        if (isStrongRed) {
+        if (r > 150 && r > g * 1.6 && r > b * 1.6) {
           sumX += x
           sumY += y
           count++
@@ -82,26 +88,64 @@ function App() {
       }
     }
 
-    if (count < 20) return null  // require larger cluster
-    return { x: sumX / count, y: sumY / count }
+    if (count < 8) return null
+    return {
+      x: sumX / count,
+      y: sumY / count,
+      normX: (sumX / count) / imageData.width,
+      normY: (sumY / count) / imageData.height
+    }
+  }
+
+  const captureCorner = () => {
+    if (!spot) {
+      alert('No red light detected! Point your light at the corner first.')
+      return
+    }
+    const newCorners = [...corners, { x: spot.normX, y: spot.normY }]
+    setCorners(newCorners)
+
+    if (newCorners.length === 4) {
+      setScreen('detection')
+    }
   }
 
   return (
     <div>
-      <button onClick={cameraOn ? stopCamera : startCamera}>
-        {cameraOn ? 'Turn Off Camera' : 'Turn On Camera'}
-      </button>
-
-      <video ref={videoRef} autoPlay playsInline style={{ width: '50%' }} />
-
-      {/* hidden canvas for pixel reading */}
+      <video ref={videoRef} autoPlay playsInline style={{ width: '100%' }} />
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
-      {/* debug readout */}
-      {spot ? (
-        <p>🔴 Red light detected at x: {Math.round(spot.x)}, y: {Math.round(spot.y)}</p>
-      ) : (
-        <p>No red light detected</p>
+      {/* SCREEN 1 — Start */}
+      {screen === 'camera' && (
+        <div>
+          <h2>LightSpeak</h2>
+          <button onClick={startCamera}>Start Camera</button>
+        </div>
+      )}
+
+      {/* SCREEN 2 — Calibration */}
+      {screen === 'calibration' && (
+        <div>
+          <p>Step {corners.length + 1} of 4</p>
+          <p>Point your light at the <strong>{CORNER_NAMES[corners.length]}</strong> of the board</p>
+          {spot ? (
+            <p>🔴 Light detected!</p>
+          ) : (
+            <p>⏳ Waiting for red light...</p>
+          )}
+          <button onClick={captureCorner}>Capture Corner</button>
+          <button onClick={stopCamera}>Cancel</button>
+        </div>
+      )}
+
+      {/* SCREEN 3 — Detection */}
+      {screen === 'detection' && (
+        <div>
+          <p>✅ Calibrated! Detection active.</p>
+          <p>{spot ? `🔴 Light at: ${Math.round(spot.normX * 100)}%, ${Math.round(spot.normY * 100)}%` : 'No light detected'}</p>
+          <button onClick={() => { setCorners([]); setScreen('calibration') }}>Recalibrate</button>
+          <button onClick={stopCamera}>Stop</button>
+        </div>
       )}
     </div>
   )
