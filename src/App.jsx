@@ -3,7 +3,7 @@ import { BOARD_LAYOUT } from './utils/boardLayout'
 
 function App() {
   // TODO: Incorporate the board
-  
+
   // references to the live camera feed and its stream (needed to start/stop it)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
@@ -41,7 +41,7 @@ function App() {
     }
   }
 
-  // stops all camera tracks and resets everything back to the start scree
+  // stops all camera tracks and resets everything back to the start screen
   const stopCamera = () => {
     try {
       streamRef.current.getTracks().forEach(track => track.stop())
@@ -78,6 +78,28 @@ function App() {
       const frame = ctx.getImageData(0, 0, canvas.width, canvas.height)
       const result = findRedLight(frame)
       setSpot(result)
+      
+      // Draw limegreen crosshair overlay
+      if (result) {
+        const { x, y } = result
+        const radius = 20
+ 
+        ctx.strokeStyle = 'lime'
+        ctx.lineWidth = 2
+ 
+        // Circle
+        ctx.beginPath()
+        ctx.arc(x, y, radius, 0, Math.PI * 2)
+        ctx.stroke()
+ 
+        // Crosshair lines
+        ctx.beginPath()
+        ctx.moveTo(x - radius * 1.5, y)
+        ctx.lineTo(x + radius * 1.5, y)
+        ctx.moveTo(x, y - radius * 1.5)
+        ctx.lineTo(x, y + radius * 1.5)
+        ctx.stroke()
+      }
     }
 
     animId = requestAnimationFrame(detect)
@@ -89,6 +111,7 @@ function App() {
     const { data, width, height } = imageData
     let sumX = 0, sumY = 0, count = 0
 
+    // loop over every third pixel
     for (let y = 0; y < height; y += 3) {
       for (let x = 0; x < width; x += 3) {
         const i = (y * width + x) * 4
@@ -96,7 +119,9 @@ function App() {
         const g = data[i + 1]
         const b = data[i + 2]
 
-        if (r > 150 && r > g * 1.6 && r > b * 1.6) {
+        // flags pixels where red is dominant
+        // r > 200 and red is 2.5 times greater than red and blue
+        if (r > 180 && r > g * 2.5 && r > b * 2.5) {
           sumX += x
           sumY += y
           count++
@@ -104,7 +129,9 @@ function App() {
       }
     }
 
+    // if fewer than 8 pixels matched, return null (did not detect red light)
     if (count < 8) return null
+    // Else, averages the positions of all matching pixels to find the light's center
     return {
       x: sumX / count,
       y: sumY / count,
@@ -129,8 +156,14 @@ function App() {
 
   return (
     <div>
-      <video ref={videoRef} autoPlay playsInline style={{ width: '100%' }} />
-      <canvas ref={canvasRef} style={{ display: 'none' }} />
+      <div style={{ position: 'relative' }}>
+        <video ref={videoRef} autoPlay playsInline style={{ width: '100%', display: 'block' }} />
+        <canvas ref={canvasRef} style={{
+          position: 'absolute',
+          top: 0, left: 0,
+          width: '100%', height: '100%'
+        }} />
+      </div>
 
       {/* SCREEN 1 — Start */}
       {screen === 'camera' && (
