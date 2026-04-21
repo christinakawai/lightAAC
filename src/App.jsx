@@ -156,8 +156,8 @@ function App() {
 
   return (
     <div>
-      <div style={{ position: 'relative', width: '70%', aspectRatio: '16 / 9', margin: '0 auto'}}>
-        <video ref={videoRef} autoPlay playsInline style={{ width: '50%', display: 'block' }} />
+      <div style={{ position: 'relative', width: '50%', aspectRatio: '16 / 9', margin: '0 auto'}}>
+        <video ref={videoRef} autoPlay playsInline style={{ width: '100%', display: 'block' }} />
         <canvas ref={canvasRef} style={{
           position: 'absolute',
           top: 0, left: 0,
