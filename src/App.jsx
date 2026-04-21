@@ -2,12 +2,20 @@ import { useRef, useState, useEffect } from 'react'
 import { BOARD_LAYOUT } from './utils/boardLayout'
 
 function App() {
+  // TODO: Incorporate the board
+  
+  // references to the live camera feed and its stream (needed to start/stop it)
   const videoRef = useRef(null)
   const streamRef = useRef(null)
+  // a hidden canvas used to grab and analyze individual video frames
   const canvasRef = useRef(null)
+  // boolean of whether the camera is running
   const [cameraOn, setCameraOn] = useState(false)
+  // the current detected position of the red light 
   const [spot, setSpot] = useState(null)
+  // the four calibration points captured so far
   const [corners, setCorners] = useState([])
+  // controls which UI is shown
   const [screen, setScreen] = useState('camera') // 'camera' | 'calibration' | 'detection'
 
   const CORNER_NAMES = [
@@ -17,6 +25,8 @@ function App() {
     'Bottom-Right corner'
   ]
 
+  // requests camera access (preferring the rear camera via facingMode: 'environment'), 
+  // attaches the stream to the video element, and moves to the calibration screen
   const startCamera = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -31,6 +41,7 @@ function App() {
     }
   }
 
+  // stops all camera tracks and resets everything back to the start scree
   const stopCamera = () => {
     try {
       streamRef.current.getTracks().forEach(track => track.stop())
@@ -44,6 +55,10 @@ function App() {
     }
   }
 
+  // This runs a requestAnimationFrame loop whenever the camera is on. Each frame it:
+  // Draws the current video frame onto the hidden canvas
+  // Reads the raw pixel data with getImageData
+  // Passes it to findRedLight and updates spot
   useEffect(() => {
     if (!cameraOn) return
 
@@ -69,6 +84,7 @@ function App() {
     return () => cancelAnimationFrame(animId)
   }, [cameraOn])
 
+  // core detection algorithm to find where the red light is
   const findRedLight = (imageData) => {
     const { data, width, height } = imageData
     let sumX = 0, sumY = 0, count = 0
@@ -97,6 +113,7 @@ function App() {
     }
   }
 
+  // saves the current spot position as a corner. After 4 corners are captured, moves to the detection screen
   const captureCorner = () => {
     if (!spot) {
       alert('No red light detected! Point your light at the corner first.')
