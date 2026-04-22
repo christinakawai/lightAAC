@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from 'react'
-import { BOARD_LAYOUT } from './utils/boardLayout'
+import { cameraToBoard, getKey } from './utils/perspective'
 
 function App() {
   // TODO: Incorporate the board
@@ -192,7 +192,19 @@ function App() {
       {screen === 'detection' && (
         <div>
           <p>✅ Calibrated! Detection active.</p>
-          <p>{spot ? `🔴 Light at: ${Math.round(spot.normX * 100)}%, ${Math.round(spot.normY * 100)}%` : 'No light detected'}</p>
+          {spot ? (
+            <div>
+              <p>🔴 Light detected</p>
+              <h1 style={{ fontSize: '5rem' }}>
+                {getKey(
+                  cameraToBoard(spot.normX, spot.normY, corners).boardX,
+                  cameraToBoard(spot.normX, spot.normY, corners).boardY
+                )}
+              </h1>
+            </div>
+          ) : (
+            <p>No light detected</p>
+          )}
           <button onClick={() => { setCorners([]); setScreen('calibration') }}>Recalibrate</button>
           <button onClick={stopCamera}>Stop</button>
         </div>
